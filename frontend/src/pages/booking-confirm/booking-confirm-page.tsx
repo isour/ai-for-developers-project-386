@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import type { BookingConfirmLocationState } from "@/shared/model/booking-flow";
+import type { EventType } from "@/shared/api/types";
 import { bookingConfirmFormSchema } from "@/shared/lib/booking-confirm-schema";
 import { cn } from "@/shared/lib/utils";
 import { guestApi } from "@/shared/api/guest-api";
@@ -32,6 +33,9 @@ export function BookingConfirmPage() {
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string }>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [eventType, setEventType] = useState<EventType | null>(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [freeForDay, setFreeForDay] = useState(0);
 
   useEffect(() => {
     setError(null);
@@ -41,9 +45,26 @@ export function BookingConfirmPage() {
     }
   }, [eventTypeId, navigate, state?.slotEndIso, state?.slotStartIso]);
 
-  const eventType = eventTypeId ? guestApi.getEventTypeById(eventTypeId) : null;
+  useEffect(() => {
+    if (!eventTypeId || !state?.slotStartIso) return;
+    let alive = true;
+    setDetailLoading(true);
+    const start = parseISO(state.slotStartIso);
+    void Promise.all([
+      guestApi.getEventTypeById(eventTypeId),
+      guestApi.countFreeSlotsOnDay(eventTypeId, start),
+    ]).then(([type, n]) => {
+      if (!alive) return;
+      setEventType(type);
+      setFreeForDay(n);
+      setDetailLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [eventTypeId, state?.slotStartIso]);
 
-  if (!eventTypeId || !eventType) {
+  if (!eventTypeId) {
     return <Navigate replace to="/book" />;
   }
 
@@ -52,10 +73,25 @@ export function BookingConfirmPage() {
   }
 
   const start = parseISO(state.slotStartIso);
+
+  if (detailLoading) {
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:py-10">
+        <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!eventType) {
+    return <Navigate replace to="/book" />;
+  }
+
   const slotLabel = `${format(start, "HH:mm")} – ${format(parseISO(state.slotEndIso), "HH:mm")}`;
   const dateLabel = format(start, "EEEE, d MMMM", { locale: ru });
-
-  const freeForDay = guestApi.syncCountFreeSlotsOnDay(eventTypeId, start);
   const durationLabel = `${eventType.durationMinutes} мин`;
 
   async function handleSubmit(ev: FormEvent) {

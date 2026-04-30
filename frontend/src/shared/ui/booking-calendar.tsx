@@ -4,11 +4,10 @@ import { DayButton, type DayButtonProps, DayPicker, getDefaultClassNames } from 
 import { ru } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { dayKeyRu } from "@/shared/lib/calendar-day-key";
 import { cn } from "@/shared/lib/utils";
 
-export function dayKeyRu(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+export { dayKeyRu } from "@/shared/lib/calendar-day-key";
 
 export type BookingCalendarProps = React.ComponentProps<typeof DayPicker> & {
   availabilityByDayKey?: Map<string, number>;

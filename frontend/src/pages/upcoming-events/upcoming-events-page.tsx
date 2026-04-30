@@ -34,7 +34,7 @@ export function UpcomingEventsPage() {
       ) : items.length === 0 ? (
         <Card className="border-dashed shadow-none">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Пока нет активных записей в мок-данных. Оформите бронирование через «Записаться».
+            Пока нет активных записей. Оформите бронирование через «Записаться».
           </CardContent>
         </Card>
       ) : (

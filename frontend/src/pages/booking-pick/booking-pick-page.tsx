@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import type { BookingConfirmLocationState } from "@/shared/model/booking-flow";
-import type { SlotRow } from "@/shared/api/types";
+import type { EventType, SlotRow } from "@/shared/api/types";
 import { guestApi } from "@/shared/api/guest-api";
 import { BookingCalendar, dayKeyRu } from "@/shared/ui/booking-calendar";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
@@ -32,7 +33,8 @@ export function BookingPickPage() {
     [windowBounds.to],
   );
 
-  const eventType = eventTypeId ? guestApi.getEventTypeById(eventTypeId) : null;
+  const [eventType, setEventType] = useState<EventType | null>(null);
+  const [eventTypeLoading, setEventTypeLoading] = useState(true);
 
   const [month, setMonth] = useState(() => calendarStartMonth);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -51,6 +53,22 @@ export function BookingPickPage() {
     }
     return keys;
   }, [month]);
+
+  useEffect(() => {
+    if (!eventTypeId) return;
+    let alive = true;
+    const run = async () => {
+      setEventTypeLoading(true);
+      const t = await guestApi.getEventTypeById(eventTypeId);
+      if (!alive) return;
+      setEventType(t);
+      setEventTypeLoading(false);
+    };
+    void run();
+    return () => {
+      alive = false;
+    };
+  }, [eventTypeId]);
 
   useEffect(() => {
     if (!eventTypeId) return;
@@ -88,6 +106,15 @@ export function BookingPickPage() {
 
   if (!eventTypeId) {
     return <Navigate replace to="/book" />;
+  }
+
+  if (eventTypeLoading) {
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 md:py-10">
+        <Skeleton className="h-10 w-full max-w-md rounded-md" />
+        <Skeleton className="min-h-[420px] w-full rounded-xl" />
+      </div>
+    );
   }
 
   if (!eventType) {

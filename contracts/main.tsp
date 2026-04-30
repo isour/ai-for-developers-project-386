@@ -24,6 +24,7 @@ using TypeSpec.Rest;
     Без регистрации и авторизации по учётным записям. Владелец — один профиль админской части;
     гость бронирует слот публично. Окно гостевой записи по умолчанию — 14 дней от текущей даты;
     два бронирования не могут пересекаться по времени, даже при разных типах событий.
+    Слоты строятся по рабочему дню **09:00–18:00**; длительность встречи — **30 или 60 минут** (шаг сетки совпадает с длительностью типа).
     Стиль: **REST** (ресурсы, множественное число в путях коллекций, при необходимости субресурсы).
     Привязка маршрутов описана через **@typespec/http** совместно с библиотекой **@typespec/rest** (общие соглашения и расширяемость).
     """,
@@ -64,7 +65,16 @@ model BadRequest {
   ...Problem;
 }
 
+/** Допустимая длительность встречи: 30 или 60 минут (сетка рабочего дня 09:00–18:00). */
+alias SlotDurationMinutes = 30 | 60;
+
 /** Тип события (шаблон встречи), задаётся владельцем. */
+@TypeSpec.example(#{
+  id: "intro-30",
+  title: "Знакомство, 30 минут",
+  description: "Короткий созвон: цели, контекст, следующие шаги.",
+  durationMinutes: 30,
+})
 model EventType {
   /** Стабильный идентификатор (напр. slug или UUID строкой). */
   id: string;
@@ -72,10 +82,8 @@ model EventType {
   title: string;
   description: string;
 
-  /** Длительность встречи в минутах; задаёт размер интервала бронирования. */
-  @minValue(1)
-  @maxValue(1440)
-  durationMinutes: int32;
+  /** Длительность в минутах; совпадает с шагом сетки слотов (30 или 60). */
+  durationMinutes: SlotDurationMinutes;
 }
 
 model EventTypeCreate {
@@ -83,9 +91,7 @@ model EventTypeCreate {
   title: string;
   description: string;
 
-  @minValue(1)
-  @maxValue(1440)
-  durationMinutes: int32;
+  durationMinutes: SlotDurationMinutes;
 }
 
 model EventTypeUpdate {
@@ -93,18 +99,28 @@ model EventTypeUpdate {
   description?: string;
 
   /** При смене длительности реализации следует решить судьбу существующих бронирований. */
-  @minValue(1)
-  @maxValue(1440)
-  durationMinutes?: int32;
+  durationMinutes?: SlotDurationMinutes;
 }
 
 /** Интервал свободного слота `[startAt, endAt)`. */
+@TypeSpec.example(#{
+  startAt: utcDateTime.fromISO("2026-05-15T09:00:00+03:00"),
+  endAt: utcDateTime.fromISO("2026-05-15T09:30:00+03:00"),
+})
 model AvailableSlot {
   startAt: utcDateTime;
   endAt: utcDateTime;
 }
 
 /** Подтверждённое бронирование. */
+@TypeSpec.example(#{
+  id: "bkg-mock-1",
+  eventTypeId: "intro-30",
+  startAt: utcDateTime.fromISO("2026-05-12T10:00:00+03:00"),
+  endAt: utcDateTime.fromISO("2026-05-12T10:30:00+03:00"),
+  guestDisplayName: "Анна Петрова",
+  guestContact: "anna@example.com",
+})
 model Booking {
   id: string;
   eventTypeId: string;
@@ -133,6 +149,12 @@ model GuestBookingRequest {
 interface OwnerEventTypes {
   /** Список всех типов событий. */
   @get
+  @TypeSpec.opExample(#{
+    returnType: #[
+      #{ id: "intro-30", title: "Знакомство, 30 минут", description: "Короткий созвон: цели, контекст, следующие шаги.", durationMinutes: 30 },
+      #{ id: "deep-dive-60", title: "Рабочая сессия, 60 минут", description: "Разбор задачи, демонстрация, фиксация договорённостей.", durationMinutes: 60 },
+    ],
+  })
   list(): EventType[];
 
   /** Создать тип события (`POST` по коллекции). */
@@ -159,6 +181,45 @@ interface OwnerEventTypeResource {
 interface OwnerBookings {
   /** Бронирования всех типов в окне времени `[from, to)`. */
   @get
+  @TypeSpec.opExample(#{
+    parameters: #{
+      from: utcDateTime.fromISO("2026-04-30T00:00:00+03:00"),
+      to: utcDateTime.fromISO("2027-04-30T00:00:00+03:00"),
+    },
+    returnType: #[
+      #{
+        id: "bkg-mock-1",
+        eventTypeId: "intro-30",
+        startAt: utcDateTime.fromISO("2026-05-07T10:00:00+03:00"),
+        endAt: utcDateTime.fromISO("2026-05-07T10:30:00+03:00"),
+        guestDisplayName: "Анна Петрова",
+        guestContact: "anna@example.com",
+      },
+      #{
+        id: "bkg-mock-2",
+        eventTypeId: "deep-dive-60",
+        startAt: utcDateTime.fromISO("2026-05-08T14:00:00+03:00"),
+        endAt: utcDateTime.fromISO("2026-05-08T15:00:00+03:00"),
+        guestDisplayName: "Иван Смирнов",
+        guestContact: "ivan.smirnov@example.com",
+      },
+      #{
+        id: "bkg-mock-3",
+        eventTypeId: "intro-30",
+        startAt: utcDateTime.fromISO("2026-05-12T11:30:00+03:00"),
+        endAt: utcDateTime.fromISO("2026-05-12T12:00:00+03:00"),
+        guestDisplayName: "Ольга Климова",
+        guestContact: "+7 900 555-12-34",
+      },
+      #{
+        id: "bkg-mock-4",
+        eventTypeId: "deep-dive-60",
+        startAt: utcDateTime.fromISO("2026-05-20T09:00:00+03:00"),
+        endAt: utcDateTime.fromISO("2026-05-20T10:00:00+03:00"),
+        guestDisplayName: "Демо без контакта",
+      },
+    ],
+  })
   list(
     /** Начало окна (UTC). */
     @query from: utcDateTime,
@@ -172,6 +233,12 @@ interface OwnerBookings {
 interface GuestEventTypes {
   /** Карточки типов событий для выбора бронирования. */
   @get
+  @TypeSpec.opExample(#{
+    returnType: #[
+      #{ id: "intro-30", title: "Знакомство, 30 минут", description: "Короткий созвон: цели, контекст, следующие шаги.", durationMinutes: 30 },
+      #{ id: "deep-dive-60", title: "Рабочая сессия, 60 минут", description: "Разбор задачи, демонстрация, фиксация договорённостей.", durationMinutes: 60 },
+    ],
+  })
   list(): EventType[];
 }
 
@@ -184,6 +251,33 @@ interface GuestSlots {
    * Запросы вне гостевого окна (14 дней от «сегодня» на сервере) — `422`.
    */
   @get
+  @TypeSpec.opExample(#{
+    parameters: #{
+      eventTypeId: "intro-30",
+      from: utcDateTime.fromISO("2026-05-15T00:00:00+03:00"),
+      to: utcDateTime.fromISO("2026-05-16T00:00:00+03:00"),
+    },
+    returnType: #[
+      #{ startAt: utcDateTime.fromISO("2026-05-15T09:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T09:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T09:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T10:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T10:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T10:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T10:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T11:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T11:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T11:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T11:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T12:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T12:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T12:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T12:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T13:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T13:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T13:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T13:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T14:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T14:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T14:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T14:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T15:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T15:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T15:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T15:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T16:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T16:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T16:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T16:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T17:00:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T17:00:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T17:30:00+03:00") },
+      #{ startAt: utcDateTime.fromISO("2026-05-15T17:30:00+03:00"), endAt: utcDateTime.fromISO("2026-05-15T18:00:00+03:00") },
+    ],
+  })
   list(
     @path eventTypeId: string,
     @query from: utcDateTime,
