@@ -36,6 +36,18 @@ export function EventTypesPage() {
           <Skeleton className="h-40 rounded-xl" />
           <Skeleton className="h-40 rounded-xl" />
         </div>
+      ) : types.length === 0 ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-lg">Нет типов встреч</CardTitle>
+            <CardDescription>
+              Календарь пуст: в API ещё не создано ни одного типа события. В демо-бэкенде при старте подставляются
+              примеры; если включён <code className="rounded bg-muted px-1 text-xs">SKIP_DEMO_SEED=1</code>, добавьте
+              типы запросом <code className="rounded bg-muted px-1 text-xs">POST /owner/event-types</code> (см.
+              OpenAPI).
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {types.map((t) => (

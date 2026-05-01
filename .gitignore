@@ -1,1 +1,5 @@
 node_modules/
+
+# Локальные секреты (ключ Render MCP и др.); не коммитить.
+.env.local
+.cursor/mcp.json

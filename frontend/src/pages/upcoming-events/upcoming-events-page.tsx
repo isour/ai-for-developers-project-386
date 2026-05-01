@@ -10,11 +10,17 @@ import { Skeleton } from "@/shared/ui/skeleton";
 export function UpcomingEventsPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Booking[]>([]);
+  const [typeTitleById, setTypeTitleById] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let alive = true;
-    void guestApi.listUpcomingBookings().then((list) => {
+    void Promise.all([guestApi.listEventTypes(), guestApi.listUpcomingBookings()]).then(([types, list]) => {
       if (!alive) return;
+      const titles: Record<string, string> = {};
+      for (const t of types) {
+        titles[t.id] = t.title;
+      }
+      setTypeTitleById(titles);
       setItems(list);
       setLoading(false);
     });
@@ -25,7 +31,12 @@ export function UpcomingEventsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:py-12">
-      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Предстоящие события</h1>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Предстоящие встречи</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Сценарий владельца календаря: все предстоящие бронирования по каждому типу события в одном списке.
+        </p>
+      </div>
 
       {loading ? (
         <div className="space-y-3">
@@ -34,7 +45,7 @@ export function UpcomingEventsPage() {
       ) : items.length === 0 ? (
         <Card className="border-dashed shadow-none">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Пока нет активных записей. Оформите бронирование через «Записаться».
+            Пока нет предстоящих встреч в календаре.
           </CardContent>
         </Card>
       ) : (
@@ -55,6 +66,10 @@ export function UpcomingEventsPage() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Тип встречи: </span>
+                    <span className="font-medium">{typeTitleById[b.eventTypeId] ?? b.eventTypeId}</span>
+                  </div>
                   <div>
                     <span className="text-muted-foreground">Слот: </span>
                     <span className="font-medium">{slotText}</span>

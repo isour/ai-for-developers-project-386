@@ -1,4 +1,4 @@
-import { addDays, formatISO, isBefore, startOfDay } from "date-fns";
+import { addDays, compareAsc, formatISO, isBefore, parseISO, startOfDay } from "date-fns";
 
 import { iterateDaySlots } from "@/shared/lib/day-slots";
 
@@ -9,6 +9,11 @@ import { freeSlotFingerprints, prismSlotFallbackEnabled, slotStartFingerprint } 
 
 function qs(params: Record<string, string>) {
   return new URLSearchParams(params).toString();
+}
+
+/** Окно для GET /owner/bookings: UTC RFC3339 без миллисекунд (совместимо с Go time.RFC3339). */
+function toBookingWindowRFC3339UTC(d: Date): string {
+  return d.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 function availableSlotsPath(eventTypeId: string, fromIso: string, toIso: string) {
@@ -136,12 +141,21 @@ export const guestApi = {
     }),
 
   listUpcomingBookings: async (now: Date = new Date()): Promise<Booking[]> => {
-    const fromIso = formatISO(now);
-    const toIso = formatISO(addDays(now, 366));
+    const fromIso = toBookingWindowRFC3339UTC(now);
+    const toIso = toBookingWindowRFC3339UTC(addDays(now, 366));
     const list = await fetchJson<Booking[]>(`/owner/bookings?${qs({ from: fromIso, to: toIso })}`);
+    if (!Array.isArray(list)) {
+      return [];
+    }
+    // Встреча «ещё не закончилась» по времени окончания (текущие и будущие).
+    // Date.parse устойчивее к вариациям RFC3339 от Go, чем parseISO в отдельных случаях.
     return list
-      .filter((b) => isBefore(now, new Date(b.endAt)))
-      .sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
+      .filter((b) => {
+        const endMs = Date.parse(b.endAt);
+        if (Number.isNaN(endMs)) return true;
+        return endMs > now.getTime();
+      })
+      .sort((a, b) => compareAsc(parseISO(a.startAt), parseISO(b.startAt)));
   },
 
   countFreeSlotsOnDay: async (eventTypeId: string, day: Date): Promise<number> => {

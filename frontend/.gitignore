@@ -2,3 +2,5 @@
 /dist
 *.local
 .npm-cache
+/playwright-report
+/test-results

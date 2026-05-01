@@ -1,6 +1,13 @@
 ### Hexlet tests and linter status:
 [![Actions Status](https://github.com/isour/ai-for-developers-project-386/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/isour/ai-for-developers-project-386/actions)
 
+### Деплой (Docker / Render)
+
+- Сборка образа: **`make docker-build`** (или `docker build -t calendar-calls:local .`).
+- Локальный запуск как в проде: **`make docker-run`** — приложение слушает **`PORT`** (по умолчанию `8080` внутри контейнера, проброшен на хост).
+- На **Render**: Web Service с **Docker**, корневой [`Dockerfile`](Dockerfile); **`PORT`** выставляет платформа. Опционально Blueprint [`render.yaml`](render.yaml).
+- **Опубликованное приложение:** [https://calendar-calls.onrender.com](https://calendar-calls.onrender.com) (Docker Web Service, дашборд: [calendar-calls](https://dashboard.render.com/web/srv-d7qb223rjlhs73ebr1j0)).
+
 ### Frontend (моки календаря)
 
 - Путь: **`frontend/`**. Node **≥20** (см. `frontend/package.json`).

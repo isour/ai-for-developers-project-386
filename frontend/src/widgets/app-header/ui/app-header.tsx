@@ -34,7 +34,7 @@ export function AppHeader() {
             )}
             aria-current={isEvents ? "page" : undefined}
           >
-            Предстоящие события
+            Предстоящие встречи
           </NavLink>
         </nav>
       </div>

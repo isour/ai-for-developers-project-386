@@ -1,6 +1,12 @@
 import * as React from "react";
 
-import { DayButton, type DayButtonProps, DayPicker, getDefaultClassNames } from "react-day-picker";
+import {
+  DayButton,
+  type ChevronProps,
+  type DayButtonProps,
+  DayPicker,
+  getDefaultClassNames,
+} from "react-day-picker";
 import { ru } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -58,7 +64,7 @@ export function BookingCalendar({
         ...classNames,
       }}
       components={{
-        Chevron: ({ orientation, className: chClass, ...rest }) => {
+        Chevron: ({ orientation, className: chClass, ...rest }: ChevronProps) => {
           const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
           return <Icon className={cn("size-4", chClass)} {...rest} />;
         },
@@ -71,6 +77,8 @@ export function BookingCalendar({
               {...rest}
               day={day}
               modifiers={modifiers}
+              data-day-key={key}
+              data-testid={modifiers.today ? "calendar-day-today" : undefined}
               className={cn(
                 "relative flex aspect-square h-auto w-full min-h-[52px] flex-col justify-center rounded-md px-px py-0.5 hover:bg-accent",
                 modifiers.selected && "border-2 border-primary py-px",
