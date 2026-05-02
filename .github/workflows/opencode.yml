@@ -14,7 +14,7 @@ jobs:
         startsWith(github.event.comment.body, '/oc') ||
         contains(github.event.comment.body, ' /opencode') ||
         startsWith(github.event.comment.body, '/opencode')
-      ) && github.actor == vars.OPENCODE_ALLOWED_ACTOR
+      ) && github.actor == github.repository_owner
     runs-on: ubuntu-latest
     permissions:
       id-token: write
